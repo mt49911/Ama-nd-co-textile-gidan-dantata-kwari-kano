@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Place Order - AMA & CO TEXTILE</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  <header>
+    <div class="header-container">
+      <div class="logo">
+        <img src="logo.jpg" alt="AMA & CO TEXTILE">
+      </div>
+      <div class="notification-bell" id="notification-bell">
+        <i class="fas fa-bell"></i>
+        <span class="notification-badge" id="notification-badge">0</span>
+      </div>
+      <div class="menu-toggle" id="mobile-menu">
+        <span></span><span></span><span></span>
+      </div>
+      <ul class="nav-menu" id="nav-menu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="gallery.html">Gallery</a></li>
+        <li><a href="order-status.html">Order Status</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main>
+    <h2>Place Your Order</h2>
+    <form id="order-form">
+      <div class="form-group">
+        <label>Product</label>
+        <input type="text" id="product-name" readonly>
+      </div>
+      <div class="form-group">
+        <label>Quantity (Yards) *</label>
+        <input type="number" id="quantity" min="1" value="1" required>
+      </div>
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="fullname" required>
+      </div>
+      <div class="form-group">
+        <label>Email Address *</label>
+        <input type="email" id="email" required placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>Phone Number *</label>
+        <input type="tel" id="phone" required>
+      </div>
+      <div class="form-group">
+        <label>State *</label>
+        <select id="state" required>
+          <option value="">Select State</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Local Government *</label>
+        <select id="lga" required>
+          <option value="">Select LGA</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Address *</label>
+        <textarea id="address" rows="2" required></textarea>
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <textarea id="description" rows="3"></textarea>
+      </div>
+      <button type="submit" class="btn">Submit Order</button>
+    </form>
+
+    <div id="order-success" style="display: none;" class="success-message">
+      <h3>Order Successful!</h3>
+      <p>Your order has been placed. For any inquiries, contact us on WhatsApp:</p>
+      <span class="whatsapp-number">08167726037</span>
+      <p>We will send you an email confirmation shortly.</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 AMA & CO TEXTILE LTD. All rights reserved.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <script src="data.js"></script>
+  <script src="email.js"></script>
+  <script src="main.js"></script>
+  <script>
+    // Populate states
+    const stateSelect = document.getElementById('state');
+    nigerianStates.forEach(state => {
+      const option = document.createElement('option');
+      option.value = state;
+      option.textContent = state;
+      stateSelect.appendChild(option);
+    });
+
+    // LGA dependency
+    stateSelect.addEventListener('change', function() {
+      const lgaSelect = document.getElementById('lga');
+      lgaSelect.innerHTML = '<option value="">Select LGA</option>';
+      const lgas = getLgas(this.value) || [];
+      lgas.forEach(lga => {
+        const option = document.createElement('option');
+        option.value = lga;
+        option.textContent = lga;
+        lgaSelect.appendChild(option);
+      });
+    });
+
+    // Get product from URL and find product details
+    const urlParams = new URLSearchParams(window.location.search);
+    const productName = urlParams.get('product') || 'Not specified';
+    document.getElementById('product-name').value = productName;
+
+    // Find product images
+    const products = loadProducts();
+    const productVariants = products.filter(p => p.name === productName);
+    let productImages = [];
+    if (productVariants.length > 0) {
+      productImages = productVariants[0].images || [];
+    }
+
+    // Form submission
+    document.getElementById('order-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Basic validation
+      if (!document.getElementById('fullname').value || !document.getElementById('email').value || !document.getElementById('phone').value || !document.getElementById('state').value || !document.getElementById('lga').value || !document.getElementById('address').value) {
+        alert('Please fill all required fields');
+        return;
+      }
+
+      const order = {
+        orderId: generateOrderId(),
+        name: document.getElementById('fullname').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        quantity: document.getElementById('quantity').value,
+        state: document.getElementById('state').value,
+        lga: document.getElementById('lga').value,
+        address: document.getElementById('address').value,
+        description: document.getElementById('description').value,
+        productName: productName,
+        productImages: productImages,
+        status: 'Pending',
+        date: new Date().toISOString()
+      };
+
+      // Save to localStorage
+      saveOrder(order);
+      console.log('Order saved:', order);
+
+      // Send email via EmailJS
+      sendOrderEmail(order)
+        .then(() => {
+          console.log('Emails sent successfully');
+          // Show success
+          document.getElementById('order-form').style.display = 'none';
+          document.getElementById('order-success').style.display = 'block';
+        })
+        .catch(err => {
+          console.error('Email failed:', err);
+          alert('Order saved but email notification failed. We will contact you manually. Error: ' + (err.text || 'unknown error'));
+          // Still show success because order is saved
+          document.getElementById('order-form').style.display = 'none';
+          document.getElementById('order-success').style.display = 'block';
+        });
+    });
+  </script>
+</body>
+</html>
